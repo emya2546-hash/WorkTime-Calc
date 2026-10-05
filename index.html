@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>근무시간·연봉 계산기</title>
+<meta name="theme-color" content="#2F5272">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="근무시간">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E9EDF1; --paper:#F8FAFB; --ink:#16202B; --muted:#5D6B79; --line:#C9D2DB;
+  --steel:#2F5272; --steel-soft:#DCE6EF; --signal:#F2C230; --signal-ink:#3A2E00;
+  --red:#B8402F; --red-soft:#F6E1DD; --teal:#23786F; --teal-soft:#DCEFEC;
+  --violet:#5B4D8F; --violet-soft:#E6E2F3; --leave:#7A6A4E; --leave-soft:#EEE8DC;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#10161D; --paper:#18212B; --ink:#E6ECF1; --muted:#93A2B1; --line:#2E3B48;
+    --steel:#8DB4D8; --steel-soft:#22344A; --signal:#F2C230; --signal-ink:#2A2100;
+    --red:#EE8A7A; --red-soft:#3A2420; --teal:#6FCABF; --teal-soft:#183531;
+    --violet:#B2A6E6; --violet-soft:#2A2642; --leave:#CDBB98; --leave-soft:#332D22;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#10161D; --paper:#18212B; --ink:#E6ECF1; --muted:#93A2B1; --line:#2E3B48;
+  --steel:#8DB4D8; --steel-soft:#22344A; --signal:#F2C230; --signal-ink:#2A2100;
+  --red:#EE8A7A; --red-soft:#3A2420; --teal:#6FCABF; --teal-soft:#183531;
+  --violet:#B2A6E6; --violet-soft:#2A2642; --leave:#CDBB98; --leave-soft:#332D22;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"IBM Plex Sans KR",-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  font-size:15px;line-height:1.5;font-variant-numeric:tabular-nums}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+.wrap{max-width:880px;margin:0 auto;padding:16px 16px 140px}
+
+header.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.app-name{font-size:14px;font-weight:600;color:var(--muted)}
+nav.tabs{display:flex;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:3px}
+nav.tabs button{border:0;background:none;padding:7px 14px;border-radius:7px;font-weight:500;color:var(--muted)}
+nav.tabs button[aria-selected="true"]{background:var(--steel);color:var(--paper)}
+
+/* month header + punch status */
+.month-bar{display:flex;align-items:center;gap:8px;margin:8px 0 14px}
+.month-bar h1{font-size:28px;font-weight:700;margin:0 6px 0 0;letter-spacing:-0.5px}
+.icon-btn{width:36px;height:36px;border-radius:8px;border:1px solid var(--line);background:var(--paper);display:grid;place-items:center;font-size:18px;line-height:1}
+.text-btn{border:1px solid var(--line);background:var(--paper);border-radius:8px;padding:6px 12px;font-size:14px}
+
+.card{background:var(--paper);border:1px solid var(--line);border-radius:12px}
+.status{display:grid;grid-template-columns:1.3fr 1fr;gap:0;overflow:hidden}
+.status .main{padding:18px 20px;border-right:1px dashed var(--line)}
+.status .main .lbl{font-size:13px;color:var(--muted)}
+.status .main .big{font-size:40px;font-weight:700;letter-spacing:-1px;line-height:1.15;margin:4px 0 6px}
+.status .main.over .big{color:var(--teal)}
+.status .main.short .big{color:var(--red)}
+.badge{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px}
+.badge.ok{background:var(--teal-soft);color:var(--teal)}
+.badge.ng{background:var(--red-soft);color:var(--red)}
+.status .side{padding:14px 18px;display:flex;flex-direction:column;justify-content:center;gap:10px}
+.kv{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.kv .k{font-size:13px;color:var(--muted)}
+.kv .v{font-weight:600}
+.kv.hl .v{color:var(--violet)}
+
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);margin-top:10px}
+.metrics > div{padding:12px 14px;border-right:1px solid var(--line)}
+.metrics > div:last-child{border-right:0}
+.metrics .k{font-size:12px;color:var(--muted)}
+.metrics .v{font-size:18px;font-weight:600;margin-top:2px}
+.stepper{display:flex;align-items:center;gap:6px;margin-top:2px}
+.stepper button{width:26px;height:26px;border-radius:6px;border:1px solid var(--line);background:var(--bg);font-size:15px;line-height:1;padding:0}
+.stepper span{font-size:18px;font-weight:600;min-width:46px;text-align:center}
+
+/* calendar */
+.cal-head{display:flex;justify-content:space-between;align-items:center;margin:20px 0 8px;gap:8px;flex-wrap:wrap}
+.cal-head h2{font-size:16px;margin:0}
+.quick{display:flex;gap:6px;flex-wrap:wrap}
+.quick button{border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:4px 11px;font-size:13px}
+.cal-scroll{overflow-x:auto}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr)) minmax(64px,0.9fr);min-width:340px;overflow:hidden}
+.cal .h{padding:8px 6px;font-size:12px;color:var(--muted);text-align:center;border-bottom:1px solid var(--line);background:var(--bg)}
+.cal .h.sum{color:var(--steel);font-weight:600}
+.day{position:relative;min-height:78px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);
+  background:var(--paper);padding:6px 7px;text-align:left;border-top:0;border-left:0;border-radius:0;display:flex;flex-direction:column;gap:2px}
+.day .n{font-size:12px;color:var(--muted);font-weight:500}
+.day .hn{font-size:11px;color:var(--red);line-height:1.25}
+.day .val{margin-top:auto;font-size:17px;font-weight:600}
+.day.out{background:var(--bg);cursor:default}
+.day.we{background:var(--bg);cursor:default}
+.day.we.sat .n{color:var(--steel)}
+.day.we.sun .n,.day.we.holiday .n{color:var(--red)}
+.h.sat{color:var(--steel)}.h.sun{color:var(--red)}
+.day.today .n{background:var(--ink);color:var(--paper);border-radius:4px;padding:0 5px;align-self:flex-start}
+.day.holiday{background:var(--red-soft)}
+.day.holiday .n{color:var(--red)}
+.day.t-edu .val{color:var(--teal)}
+.day.t-trip .val{color:var(--violet)}
+.day.t-leave .val{color:var(--leave);font-size:15px}
+.day.past-empty .val{color:var(--line)}
+.day.sel{background:var(--signal);}
+.day.sel .n,.day.sel .val,.day.sel .hn{color:var(--signal-ink)}
+.day.sel::after{content:"";position:absolute;inset:3px;border:2px solid var(--signal-ink);border-radius:6px;opacity:.35;pointer-events:none}
+.wk{border-bottom:1px solid var(--line);padding:6px 8px;display:flex;flex-direction:column;justify-content:center;align-items:flex-end;background:var(--steel-soft)}
+.wk .a{font-size:11px;color:var(--muted)}
+.wk .b{font-size:15px;font-weight:600;color:var(--steel)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+
+/* toolbar */
+.toolbar{position:fixed;left:0;right:0;bottom:0;padding:10px 12px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));
+  background:var(--paper);border-top:1px solid var(--line);box-shadow:0 -6px 18px rgba(20,30,40,.08);z-index:20;
+  transform:translateY(110%);transition:transform .18s ease}
+.toolbar.show{transform:none}
+.toolbar .in{max-width:880px;margin:0 auto}
+.toolbar .info{font-size:13px;color:var(--muted);margin-bottom:8px;display:flex;justify-content:space-between}
+.toolbar .btns{display:flex;gap:6px;flex-wrap:wrap}
+.toolbar .btns button{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:9px 12px;font-weight:600;font-size:14px}
+.toolbar .btns button.pri{background:var(--steel);border-color:var(--steel);color:var(--paper)}
+.toolbar .btns .custom{display:flex;gap:4px}
+.toolbar .btns input{width:92px;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--paper)}
+@media (prefers-reduced-motion:reduce){.toolbar{transition:none}}
+
+/* salary */
+.sal-grid{display:grid;grid-template-columns:1fr 1.2fr;gap:12px;align-items:start}
+.sec{padding:16px 18px}
+.sec h3{margin:0 0 4px;font-size:16px}
+.sec p.note{margin:0 0 12px;font-size:13px;color:var(--muted)}
+.field{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)}
+.field:last-child{border-bottom:0}
+.field label{font-size:14px}
+.field input{width:150px;text-align:right;border:1px solid var(--line);border-radius:8px;padding:7px 10px;background:var(--bg)}
+.field input.sm{width:90px}
+details.adv{margin-top:10px;font-size:14px}
+details.adv summary{color:var(--steel);cursor:pointer;font-weight:500}
+.out-table{width:100%;border-collapse:collapse}
+.out-table td{padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+.out-table td:last-child{text-align:right;font-weight:600}
+.out-table tr.grp td{font-size:12px;color:var(--muted);padding-top:16px;border-bottom:0;font-weight:500}
+.out-table tr.total td{font-size:18px;color:var(--steel);border-bottom:0;padding-top:12px}
+.out-table .f{display:block;font-size:11px;color:var(--muted);font-weight:400}
+
+/* settings */
+.hol-list{list-style:none;margin:0;padding:0}
+.hol-list li{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+.row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.row input{border:1px solid var(--line);border-radius:8px;padding:7px 10px;background:var(--bg)}
+a{color:var(--steel)}
+.sync{font-size:12px;color:var(--muted)}
+.danger{color:var(--red);border-color:var(--red)!important;background:none!important}
+[hidden]{display:none!important}
+
+@media (max-width:640px){
+  .status{grid-template-columns:1fr}
+  .status .main{border-right:0;border-bottom:1px dashed var(--line)}
+  .status .main .big{font-size:34px}
+  .metrics{grid-template-columns:repeat(2,1fr)}
+  .metrics > div:nth-child(2){border-right:0}
+  .metrics > div:nth-child(-n+2){border-bottom:1px solid var(--line)}
+  .sal-grid{grid-template-columns:1fr}
+  .month-bar h1{font-size:24px}
+  .day{min-height:68px;padding:5px}
+  .day .val{font-size:14px}
+  .day .hn{font-size:10px}
+  .wk{padding:5px}
+  .wk .a{font-size:10px}
+  .wk .b{font-size:13px}
+  .cal .h{padding:6px 2px;font-size:11px}
+  .day{padding:4px 3px;min-height:62px}
+  .day .val{font-size:12px}
+  .day.t-leave .val{font-size:11px}
+  .day .hn{font-size:9px;word-break:break-all;line-height:1.15}
+  .wk{padding:4px 3px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <span class="app-name">근무시간·연봉 계산기 <span class="sync" id="sync"></span></span>
+    <nav class="tabs" role="tablist">
+      <button role="tab" aria-selected="true" data-tab="time">근무시간</button>
+      <button role="tab" aria-selected="false" data-tab="pay">연봉</button>
+      <button role="tab" aria-selected="false" data-tab="set">설정</button>
+    </nav>
+  </header>
+
+  <!-- 근무시간 -->
+  <section id="tab-time">
+    <div class="month-bar">
+      <h1 id="monthTitle"></h1>
+      <button class="icon-btn" id="prevM" aria-label="이전 달">‹</button>
+      <button class="icon-btn" id="nextM" aria-label="다음 달">›</button>
+      <button class="text-btn" id="thisM">이번 달</button>
+    </div>
+
+    <div class="card status">
+      <div class="main" id="statusMain">
+        <div class="lbl" id="statusLbl"></div>
+        <div class="big" id="statusBig"></div>
+        <span class="badge" id="statusBadge"></span>
+      </div>
+      <div class="side">
+        <div class="kv"><span class="k">오늘까지 근무한 시간</span><span class="v" id="toToday"></span></div>
+        <div class="kv"><span class="k">오늘까지 의무시간</span><span class="v" id="toTodayDuty"></span></div>
+        <div class="kv hl"><span class="k">연장근무 (초과 − 17시간 42분)</span><span class="v" id="extra"></span></div>
+        <div class="kv" id="extraPayRow" hidden><span class="k">예상 연장수당</span><span class="v" id="extraPay"></span></div>
+      </div>
+    </div>
+
+    <div class="card metrics">
+      <div><div class="k">근무일</div><div class="v" id="mDays"></div></div>
+      <div><div class="k">특별휴무 (시간)</div>
+        <div class="stepper"><button id="spMinus" aria-label="특별휴무 1시간 줄이기">−</button><span id="mSpecial"></span><button id="spPlus" aria-label="특별휴무 1시간 늘리기">+</button></div></div>
+      <div><div class="k">의무 근무시간</div><div class="v" id="mDuty"></div></div>
+      <div><div class="k">이번 달 합계 (계획 포함)</div><div class="v" id="mTotal"></div></div>
+    </div>
+
+    <div class="cal-head">
+      <h2>근무 달력</h2>
+      <div class="quick">
+        <button id="selRemain">남은 평일 선택</button>
+        <button id="selEmpty">빈 평일 전체 선택</button>
+        <button id="selClear">선택 해제</button>
+      </div>
+    </div>
+    <div class="cal-scroll"><div class="card cal" id="cal"></div></div>
+    <div class="legend">
+      <span><i style="background:var(--red-soft);border:1px solid var(--red)"></i>공휴일 (자동 휴무)</span>
+      <span><i style="background:var(--teal)"></i>교육 8시간</span>
+      <span><i style="background:var(--violet)"></i>출장 8시간</span>
+      <span><i style="background:var(--leave)"></i>연차·휴가 (근무일 제외)</span>
+      <span>평일을 눌러 여러 개 선택한 뒤 아래에서 입력 (주말은 근무시간에 포함하지 않음)</span>
+    </div>
+  </section>
+
+  <!-- 연봉 -->
+  <section id="tab-pay" hidden>
+    <div class="sal-grid">
+      <div class="card sec">
+        <h3>입력</h3>
+        <p class="note">엑셀의 입력 칸과 같습니다. 단위는 원입니다.</p>
+        <div class="field"><label for="sA">기본급</label><input id="sA" inputmode="numeric" data-k="base"></div>
+        <div class="field"><label for="sF">직무수당</label><input id="sF" inputmode="numeric" data-k="job"></div>
+        <div class="field"><label for="sO">타결금</label><input id="sO" inputmode="numeric" data-k="settle"></div>
+        <div class="field"><label for="sP">특별상여 (떡값, 휴가비)</label><input id="sP" inputmode="numeric" data-k="bonus1"></div>
+        <div class="field"><label for="sQ">특별상여</label><input id="sQ" inputmode="numeric" data-k="bonus2"></div>
+        <div class="field"><label for="sPI">PI (%)</label><input id="sPI" class="sm" inputmode="decimal" data-k="pi"></div>
+        <div class="field"><label for="sPS">PS (%)</label><input id="sPS" class="sm" inputmode="decimal" data-k="ps"></div>
+        <div class="field"><label for="sLD">연차비 일수</label><input id="sLD" class="sm" inputmode="decimal" data-k="leaveDays"></div>
+        <details class="adv">
+          <summary>조정 계수 (엑셀 기본값)</summary>
+          <div class="field"><label for="c270">통상시급 기준시간</label><input id="c270" class="sm" inputmode="decimal" data-k="hStd"></div>
+          <div class="field"><label for="c176">실제시급 기준시간</label><input id="c176" class="sm" inputmode="decimal" data-k="hReal"></div>
+          <div class="field"><label for="cUp">연봉 상승률 (연차비)</label><input id="cUp" class="sm" inputmode="decimal" data-k="raise"></div>
+          <div class="field"><label for="c99">총 연봉: 실제 연봉 반영률</label><input id="c99" class="sm" inputmode="decimal" data-k="fReal"></div>
+          <div class="field"><label for="c97">총 연봉: PI 반영률</label><input id="c97" class="sm" inputmode="decimal" data-k="fPI"></div>
+        </details>
+      </div>
+      <div class="card sec">
+        <h3>계산 결과</h3>
+        <table class="out-table"><tbody id="payOut"></tbody></table>
+      </div>
+    </div>
+  </section>
+
+  <!-- 설정 -->
+  <section id="tab-set" hidden>
+    <div class="card sec">
+      <h3>공휴일</h3>
+      <p class="note">2026~2040년 공휴일·대체공휴일이 미리 들어 있고, 해당 날짜는 자동으로 휴무로 처리됩니다. 2028년 이후의 선거일·임시공휴일은 정해지면 아래에서 추가하세요.
+        <a href="https://astro.kasi.re.kr/" target="_blank" rel="noopener">한국천문연구원 천문우주정보 → 달력자료(월력요항)</a></p>
+      <div class="row" style="margin-bottom:10px">
+        <input type="date" id="hDate" aria-label="휴일 날짜">
+        <input id="hName" placeholder="이름 (예: 창립기념일)" aria-label="휴일 이름">
+        <button class="text-btn" id="hAdd">휴일 추가</button>
+      </div>
+      <ul class="hol-list" id="hList"></ul>
+    </div>
+    <div class="card sec" style="margin-top:12px">
+      <h3>데이터</h3>
+      <p class="note" id="syncNote"></p>
+      <button class="text-btn danger" id="resetMonth">보고 있는 달 기록 지우기</button>
+    </div>
+    <div class="card sec" style="margin-top:12px">
+      <h3>백업</h3>
+      <p class="note">백업 파일이나 백업 코드로 다른 기기·브라우저에 기록을 옮길 수 있습니다.</p>
+      <div class="row" style="margin-bottom:8px">
+        <button class="text-btn" id="bkSave">백업 파일 저장</button>
+        <button class="text-btn" id="bkOpen">백업 파일 불러오기</button>
+        <input type="file" id="bkFile" accept=".json,application/json" hidden>
+        <button class="text-btn" id="bkCopy">백업 코드 복사</button>
+        <button class="text-btn" id="bkLoad">백업 코드 불러오기</button>
+      </div>
+      <p class="note" id="bkMsg" aria-live="polite"></p>
+      <textarea id="bkText" rows="3" placeholder="불러올 백업 코드를 여기에 붙여넣으세요" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--bg);font-size:12px"></textarea>
+    </div>
+  </section>
+</div>
+
+<div class="toolbar" id="toolbar" aria-live="polite">
+  <div class="in">
+    <div class="info"><span id="selInfo"></span><button class="text-btn" id="tbClose" style="padding:2px 10px">닫기</button></div>
+    <div class="btns">
+      <button class="pri" data-act="w540">9시간</button>
+      <button class="pri" data-act="w270">4시간 30분</button>
+      <button data-act="edu">교육</button>
+      <button data-act="trip">출장</button>
+      <button data-act="leave">연차·휴가</button>
+      <span class="custom"><input id="customT" placeholder="8.45 / 8:45" aria-label="직접 입력 시간"><button data-act="custom">입력</button></span>
+      <button data-act="clear">지우기</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+/* ---------- 공휴일 2026~2040 (음력: 한국천문연구원 음양력 기준 변환, 대체공휴일 규정 적용) ---------- */
+const HOL = {"2026-01-01":"신정","2026-02-16":"설날 연휴","2026-02-17":"설날","2026-02-18":"설날 연휴","2026-03-01":"삼일절","2026-03-02":"대체공휴일","2026-05-01":"노동절","2026-05-05":"어린이날","2026-05-24":"부처님오신날","2026-05-25":"대체공휴일","2026-06-03":"지방선거","2026-06-06":"현충일","2026-07-17":"제헌절","2026-08-15":"광복절","2026-08-17":"대체공휴일","2026-09-24":"추석 연휴","2026-09-25":"추석","2026-09-26":"추석 연휴","2026-10-03":"개천절","2026-10-05":"대체공휴일","2026-10-09":"한글날","2026-12-25":"성탄절","2027-01-01":"신정","2027-02-06":"설날 연휴","2027-02-07":"설날","2027-02-08":"설날 연휴","2027-02-09":"대체공휴일","2027-03-01":"삼일절","2027-05-01":"노동절","2027-05-03":"대체공휴일","2027-05-05":"어린이날","2027-05-13":"부처님오신날","2027-06-06":"현충일","2027-07-17":"제헌절","2027-07-19":"대체공휴일","2027-08-15":"광복절","2027-08-16":"대체공휴일","2027-09-14":"추석 연휴","2027-09-15":"추석","2027-09-16":"추석 연휴","2027-10-03":"개천절","2027-10-04":"대체공휴일","2027-10-09":"한글날","2027-10-11":"대체공휴일","2027-12-25":"성탄절","2027-12-27":"대체공휴일","2028-01-01":"신정","2028-01-26":"설날 연휴","2028-01-27":"설날","2028-01-28":"설날 연휴","2028-03-01":"삼일절","2028-05-01":"노동절","2028-05-02":"부처님오신날","2028-05-05":"어린이날","2028-06-06":"현충일","2028-07-17":"제헌절","2028-08-15":"광복절","2028-10-02":"추석 연휴","2028-10-03":"추석·개천절","2028-10-04":"추석 연휴","2028-10-05":"대체공휴일","2028-10-09":"한글날","2028-12-25":"성탄절","2029-01-01":"신정","2029-02-12":"설날 연휴","2029-02-13":"설날","2029-02-14":"설날 연휴","2029-03-01":"삼일절","2029-05-01":"노동절","2029-05-05":"어린이날","2029-05-07":"대체공휴일","2029-05-20":"부처님오신날","2029-05-21":"대체공휴일","2029-06-06":"현충일","2029-07-17":"제헌절","2029-08-15":"광복절","2029-09-21":"추석 연휴","2029-09-22":"추석","2029-09-23":"추석 연휴","2029-09-24":"대체공휴일","2029-10-03":"개천절","2029-10-09":"한글날","2029-12-25":"성탄절","2030-01-01":"신정","2030-02-02":"설날 연휴","2030-02-03":"설날","2030-02-04":"설날 연휴","2030-02-05":"대체공휴일","2030-03-01":"삼일절","2030-05-01":"노동절","2030-05-05":"어린이날","2030-05-06":"대체공휴일","2030-05-09":"부처님오신날","2030-06-06":"현충일","2030-07-17":"제헌절","2030-08-15":"광복절","2030-09-11":"추석 연휴","2030-09-12":"추석","2030-09-13":"추석 연휴","2030-10-03":"개천절","2030-10-09":"한글날","2030-12-25":"성탄절","2031-01-01":"신정","2031-01-22":"설날 연휴","2031-01-23":"설날","2031-01-24":"설날 연휴","2031-03-01":"삼일절","2031-03-03":"대체공휴일","2031-05-01":"노동절","2031-05-05":"어린이날","2031-05-28":"부처님오신날","2031-06-06":"현충일","2031-07-17":"제헌절","2031-08-15":"광복절","2031-09-30":"추석 연휴","2031-10-01":"추석","2031-10-02":"추석 연휴","2031-10-03":"개천절","2031-10-09":"한글날","2031-12-25":"성탄절","2032-01-01":"신정","2032-02-10":"설날 연휴","2032-02-11":"설날","2032-02-12":"설날 연휴","2032-03-01":"삼일절","2032-05-01":"노동절","2032-05-03":"대체공휴일","2032-05-05":"어린이날","2032-05-16":"부처님오신날","2032-05-17":"대체공휴일","2032-06-06":"현충일","2032-07-17":"제헌절","2032-07-19":"대체공휴일","2032-08-15":"광복절","2032-08-16":"대체공휴일","2032-09-18":"추석 연휴","2032-09-19":"추석","2032-09-20":"추석 연휴","2032-09-21":"대체공휴일","2032-10-03":"개천절","2032-10-04":"대체공휴일","2032-10-09":"한글날","2032-10-11":"대체공휴일","2032-12-25":"성탄절","2032-12-27":"대체공휴일","2033-01-01":"신정","2033-01-30":"설날 연휴","2033-01-31":"설날","2033-02-01":"설날 연휴","2033-02-02":"대체공휴일","2033-03-01":"삼일절","2033-05-01":"노동절","2033-05-02":"대체공휴일","2033-05-05":"어린이날","2033-05-06":"부처님오신날","2033-06-06":"현충일","2033-07-17":"제헌절","2033-07-18":"대체공휴일","2033-08-15":"광복절","2033-09-07":"추석 연휴","2033-09-08":"추석","2033-09-09":"추석 연휴","2033-10-03":"개천절","2033-10-09":"한글날","2033-10-10":"대체공휴일","2033-12-25":"성탄절","2033-12-26":"대체공휴일","2034-01-01":"신정","2034-02-18":"설날 연휴","2034-02-19":"설날","2034-02-20":"설날 연휴","2034-02-21":"대체공휴일","2034-03-01":"삼일절","2034-05-01":"노동절","2034-05-05":"어린이날","2034-05-25":"부처님오신날","2034-06-06":"현충일","2034-07-17":"제헌절","2034-08-15":"광복절","2034-09-26":"추석 연휴","2034-09-27":"추석","2034-09-28":"추석 연휴","2034-10-03":"개천절","2034-10-09":"한글날","2034-12-25":"성탄절","2035-01-01":"신정","2035-02-07":"설날 연휴","2035-02-08":"설날","2035-02-09":"설날 연휴","2035-03-01":"삼일절","2035-05-01":"노동절","2035-05-05":"어린이날","2035-05-07":"대체공휴일","2035-05-15":"부처님오신날","2035-06-06":"현충일","2035-07-17":"제헌절","2035-08-15":"광복절","2035-09-15":"추석 연휴","2035-09-16":"추석","2035-09-17":"추석 연휴","2035-09-18":"대체공휴일","2035-10-03":"개천절","2035-10-09":"한글날","2035-12-25":"성탄절","2036-01-01":"신정","2036-01-27":"설날 연휴","2036-01-28":"설날","2036-01-29":"설날 연휴","2036-01-30":"대체공휴일","2036-03-01":"삼일절","2036-03-03":"대체공휴일","2036-05-01":"노동절","2036-05-03":"부처님오신날","2036-05-05":"어린이날","2036-05-06":"대체공휴일","2036-06-06":"현충일","2036-07-17":"제헌절","2036-08-15":"광복절","2036-10-03":"추석 연휴·개천절","2036-10-04":"추석","2036-10-05":"추석 연휴","2036-10-06":"대체공휴일","2036-10-07":"대체공휴일","2036-10-09":"한글날","2036-12-25":"성탄절","2037-01-01":"신정","2037-02-14":"설날 연휴","2037-02-15":"설날","2037-02-16":"설날 연휴","2037-02-17":"대체공휴일","2037-03-01":"삼일절","2037-03-02":"대체공휴일","2037-05-01":"노동절","2037-05-05":"어린이날","2037-05-22":"부처님오신날","2037-06-06":"현충일","2037-07-17":"제헌절","2037-08-15":"광복절","2037-08-17":"대체공휴일","2037-09-23":"추석 연휴","2037-09-24":"추석","2037-09-25":"추석 연휴","2037-10-03":"개천절","2037-10-05":"대체공휴일","2037-10-09":"한글날","2037-12-25":"성탄절","2038-01-01":"신정","2038-02-03":"설날 연휴","2038-02-04":"설날","2038-02-05":"설날 연휴","2038-03-01":"삼일절","2038-05-01":"노동절","2038-05-03":"대체공휴일","2038-05-05":"어린이날","2038-05-11":"부처님오신날","2038-06-06":"현충일","2038-07-17":"제헌절","2038-07-19":"대체공휴일","2038-08-15":"광복절","2038-08-16":"대체공휴일","2038-09-12":"추석 연휴","2038-09-13":"추석","2038-09-14":"추석 연휴","2038-09-15":"대체공휴일","2038-10-03":"개천절","2038-10-04":"대체공휴일","2038-10-09":"한글날","2038-10-11":"대체공휴일","2038-12-25":"성탄절","2038-12-27":"대체공휴일","2039-01-01":"신정","2039-01-23":"설날 연휴","2039-01-24":"설날","2039-01-25":"설날 연휴","2039-01-26":"대체공휴일","2039-03-01":"삼일절","2039-04-30":"부처님오신날","2039-05-01":"노동절","2039-05-02":"대체공휴일","2039-05-03":"대체공휴일","2039-05-05":"어린이날","2039-06-06":"현충일","2039-07-17":"제헌절","2039-07-18":"대체공휴일","2039-08-15":"광복절","2039-10-01":"추석 연휴","2039-10-02":"추석","2039-10-03":"추석 연휴·개천절","2039-10-04":"대체공휴일","2039-10-05":"대체공휴일","2039-10-09":"한글날","2039-10-10":"대체공휴일","2039-12-25":"성탄절","2039-12-26":"대체공휴일","2040-01-01":"신정","2040-02-11":"설날 연휴","2040-02-12":"설날","2040-02-13":"설날 연휴","2040-02-14":"대체공휴일","2040-03-01":"삼일절","2040-05-01":"노동절","2040-05-05":"어린이날","2040-05-07":"대체공휴일","2040-05-18":"부처님오신날","2040-06-06":"현충일","2040-07-17":"제헌절","2040-08-15":"광복절","2040-09-20":"추석 연휴","2040-09-21":"추석","2040-09-22":"추석 연휴","2040-10-03":"개천절","2040-10-09":"한글날","2040-12-25":"성탄절"};
+const EXTRA_LIMIT = 17*60 + 42; // 17시간 42분
+const DAY_STD = 480;
+const LS_KEY = "worktime-calc-v1";
+const DEF_SAL = {base:"",job:"",settle:"",bonus1:"",bonus2:"",pi:"100",ps:"0",leaveDays:"9",hStd:"270",hReal:"176",raise:"1.05",fReal:"0.99",fPI:"0.97"};
+
+/* ---------- state ---------- */
+let state = {months:{}, salary:{...DEF_SAL}, custom:[], updated:0};
+try{ const s = localStorage.getItem(LS_KEY); if(s){ const p = JSON.parse(s); state = normalize(p); } }catch(e){}
+function normalize(p){
+  return {months:p.months||{}, salary:Object.assign({...DEF_SAL}, p.salary||{}), custom:Array.isArray(p.custom)?p.custom:[], updated:p.updated||0};
+}
+const now = new Date();
+const todayKey = ymd(now);
+let viewY = now.getFullYear(), viewM = now.getMonth(); // 0-based
+let selected = new Set();
+
+/* ---------- helpers ---------- */
+function pad(n){return String(n).padStart(2,"0")}
+function ymd(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())}
+function mKey(){return viewY+"-"+pad(viewM+1)}
+function month(){ const k=mKey(); if(!state.months[k]) state.months[k]={days:{},special:0}; return state.months[k]; }
+function holName(key){ const c = state.custom.find(h=>h.d===key); return c ? c.name : (HOL[key]||""); }
+function fmtHM(min){ min=Math.max(0,Math.round(min)); return Math.floor(min/60)+"시간 "+(min%60)+"분"; }
+function fmtCell(min){ return Math.floor(min/60)+":"+pad(min%60); }
+function won(x){ return isFinite(x) ? Math.round(x).toLocaleString("ko-KR")+"원" : "-"; }
+function num(v){ const n = parseFloat(String(v).replace(/,/g,"")); return isFinite(n)?n:0; }
+function roundUp(x,d){ const f=Math.pow(10,d); return Math.ceil(x*f - 1e-9)/f; }
+/* 녹스 표기(8.45 = 8시간 45분, 4.3 = 4시간 30분) 또는 8:45 */
+function parseTime(s){
+  s = String(s).trim(); if(!s) return null;
+  let h, m;
+  if(s.includes(":")){ const [a,b]=s.split(":"); h=parseInt(a,10); m=parseInt((b||"0").padEnd(2,"0").slice(0,2),10); }
+  else if(s.includes(".")){ const [a,b]=s.split("."); h=parseInt(a||"0",10); m=parseInt((b||"0").padEnd(2,"0").slice(0,2),10); }
+  else { h=parseInt(s,10); m=0; }
+  if(!isFinite(h)||!isFinite(m)||h<0||m<0||h>24) return null;
+  return h*60+m;
+}
+const isWork = e => e && (e.t==="w"||e.t==="edu"||e.t==="trip");
+
+/* ---------- calc ---------- */
+function calcMonth(){
+  const mo = month();
+  let days=0,total=0,toToday=0,daysToToday=0;
+  for(const [k,e] of Object.entries(mo.days)){
+    if(!isWork(e)) continue;
+    days++; total+=e.m;
+    if(k<=todayKey){ toToday+=e.m; daysToToday++; }
+  }
+  const duty = DAY_STD*days - (mo.special||0)*60;
+  const diff = total - duty;
+  return {days,total,duty,diff,toToday,dutyToToday:DAY_STD*daysToToday,extra:Math.max(0,diff-EXTRA_LIMIT),special:mo.special||0};
+}
+function calcPay(){
+  const s=state.salary, A=num(s.base), F=num(s.job);
+  const B=roundUp(A*0.2,-3), C=(A+B)/2, D=roundUp((A+B)/6,-2), E=A+B+C+D, G=E+F;
+  const hStd=num(s.hStd)||270, hReal=num(s.hReal)||176;
+  const H=E/hStd, I=E/hReal, J=G/hReal, K=H*1.5;
+  const L=(A+B)*8/183*1.5;
+  const M=(A+B)*num(s.pi)/100, N=(A+B)*num(s.ps)/100;
+  const O=num(s.settle), P=num(s.bonus1), Q=num(s.bonus2);
+  const R=L/(num(s.raise)||1)*num(s.leaveDays);
+  const S=E*12, T=G*12;
+  const U=T*num(s.fReal)+R+Q+P+O+N+M*num(s.fPI);
+  return {A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U};
+}
+
+/* ---------- render: time ---------- */
+const $ = id => document.getElementById(id);
+function renderTime(){
+  $("monthTitle").textContent = viewY+"년 "+(viewM+1)+"월";
+  const r = calcMonth();
+  const main=$("statusMain");
+  main.classList.toggle("over", r.diff>=0 && r.days>0);
+  main.classList.toggle("short", r.diff<0);
+  if(r.days===0){
+    $("statusLbl").textContent="이번 달 근무 계획이 비어 있습니다";
+    $("statusBig").textContent="0시간 0분";
+    $("statusBadge").textContent="날짜를 눌러 입력하세요"; $("statusBadge").className="badge ok";
+  }else if(r.diff>=0){
+    $("statusLbl").textContent="초과시간";
+    $("statusBig").textContent=fmtHM(r.diff);
+    $("statusBadge").textContent="정상"; $("statusBadge").className="badge ok";
+  }else{
+    $("statusLbl").textContent="잔여시간";
+    $("statusBig").textContent=fmtHM(-r.diff);
+    $("statusBadge").textContent="비정상 · 의무시간 미달"; $("statusBadge").className="badge ng";
+  }
+  $("toToday").textContent=fmtHM(r.toToday);
+  $("toTodayDuty").textContent=fmtHM(r.dutyToToday);
+  $("extra").textContent=fmtHM(r.extra);
+  const p=calcPay();
+  if(p.A>0){ $("extraPayRow").hidden=false; $("extraPay").textContent=won(r.extra/60*p.K); } else $("extraPayRow").hidden=true;
+  $("mDays").textContent=r.days+"일";
+  $("mSpecial").textContent=r.special+"시간";
+  $("mDuty").textContent=fmtHM(r.duty);
+  $("mTotal").textContent=fmtHM(r.total);
+  renderCal();
+  renderToolbar();
+}
+function weeksOfMonth(){
+  const first=new Date(viewY,viewM,1), last=new Date(viewY,viewM+1,0);
+  const start=new Date(first); const dow=first.getDay(); start.setDate(first.getDate()-dow);
+  const weeks=[];
+  for(let d=new Date(start); d<=last; d.setDate(d.getDate()+7)){
+    const wk=[]; let any=false;
+    for(let i=0;i<7;i++){ const x=new Date(d); x.setDate(d.getDate()+i); const inM=x.getMonth()===viewM; if(inM) any=true; wk.push({key:ymd(x),date:x.getDate(),inM}); }
+    if(any) weeks.push(wk);
+  }
+  return weeks;
+}
+function renderCal(){
+  const cal=$("cal"), mo=month();
+  const html=[];
+  ["일","월","화","수","목","금","토"].forEach((d,i)=>html.push('<div class="h'+(i===6?' sat':i===0?' sun':'')+'">'+d+'</div>'));
+  html.push('<div class="h sum">주 누적</div>');
+  let cum=0;
+  weeksOfMonth().forEach((wk,wi)=>{
+    let wsum=0;
+    wk.forEach((c,di)=>{
+      if(!c.inM){ html.push('<div class="day out" aria-hidden="true"></div>'); return; }
+      const e=mo.days[c.key], hn=holName(c.key);
+      if(di===0||di===6){
+        html.push('<div class="day we '+(di===6?'sat':'sun')+(hn?' holiday':'')+(c.key===todayKey?' today':'')+'"><span class="n">'+c.date+'</span>'+(hn?'<span class="hn">'+esc(hn)+'</span>':'')+'</div>');
+        return;
+      }
+      const cls=["day"];
+      if(hn) cls.push("holiday");
+      if(c.key===todayKey) cls.push("today");
+      if(selected.has(c.key)) cls.push("sel");
+      let val="";
+      if(e){
+        if(e.t==="w"){ val=fmtCell(e.m); }
+        else if(e.t==="edu"){ val="교육"; cls.push("t-edu"); }
+        else if(e.t==="trip"){ val="출장"; cls.push("t-trip"); }
+        else if(e.t==="leave"){ val="연차·휴가"; cls.push("t-leave"); }
+        if(isWork(e)) wsum+=e.m;
+      }else if(hn){ val=""; }
+      else if(c.key<todayKey){ val="—"; cls.push("past-empty"); }
+      html.push('<button type="button" class="'+cls.join(" ")+'" data-k="'+c.key+'" aria-pressed="'+selected.has(c.key)+'" aria-label="'+(viewM+1)+'월 '+c.date+'일 '+(hn||"")+' '+(val||"미입력")+'">'+
+        '<span class="n">'+c.date+'</span>'+(hn?'<span class="hn">'+esc(hn)+'</span>':'')+'<span class="val">'+val+'</span></button>');
+    });
+    cum+=wsum;
+    html.push('<div class="wk"><span class="a">'+(wi+1)+'주차 '+fmtCell(wsum)+'</span><span class="b">'+fmtCell(cum)+'</span></div>');
+  });
+  cal.innerHTML=html.join("");
+}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+function renderToolbar(){
+  const tb=$("toolbar");
+  tb.classList.toggle("show", selected.size>0);
+  $("selInfo").textContent = selected.size+"일 선택됨";
+}
+
+/* ---------- events: calendar ---------- */
+$("cal").addEventListener("click",ev=>{
+  const b=ev.target.closest("button.day"); if(!b) return;
+  const k=b.dataset.k;
+  if(selected.has(k)) selected.delete(k); else selected.add(k);
+  renderCal(); renderToolbar();
+});
+function monthWeekdays(){
+  const out=[]; const last=new Date(viewY,viewM+1,0).getDate();
+  for(let d=1; d<=last; d++){ const x=new Date(viewY,viewM,d), w=x.getDay(); if(w>0&&w<6) out.push(ymd(x)); }
+  return out;
+}
+$("selRemain").onclick=()=>{ const mo=month(); monthWeekdays().forEach(k=>{ if(k>=todayKey && !holName(k) && !(mo.days[k]&&mo.days[k].t==="leave")) selected.add(k); }); renderCal(); renderToolbar(); };
+$("selEmpty").onclick=()=>{ const mo=month(); monthWeekdays().forEach(k=>{ if(!holName(k) && !mo.days[k]) selected.add(k); }); renderCal(); renderToolbar(); };
+$("selClear").onclick=()=>{ selected.clear(); renderCal(); renderToolbar(); };
+$("tbClose").onclick=$("selClear").onclick;
+
+document.querySelectorAll(".toolbar [data-act]").forEach(btn=>btn.addEventListener("click",()=>{
+  const act=btn.dataset.act, mo=month(); let entry;
+  if(act==="w540") entry={t:"w",m:540};
+  else if(act==="w270") entry={t:"w",m:270};
+  else if(act==="edu") entry={t:"edu",m:480};
+  else if(act==="trip") entry={t:"trip",m:480};
+  else if(act==="leave") entry={t:"leave",m:0};
+  else if(act==="custom"){ const m=parseTime($("customT").value); if(m===null){ $("customT").focus(); $("customT").setCustomValidity("예: 8.45 또는 8:45"); $("customT").reportValidity(); return; } entry={t:"w",m}; }
+  selected.forEach(k=>{ if(act==="clear") delete mo.days[k]; else mo.days[k]={...entry}; });
+  selected.clear(); $("customT").value=""; save(); renderTime();
+}));
+$("customT").addEventListener("input",e=>e.target.setCustomValidity(""));
+$("customT").addEventListener("focus",e=>e.target.select());
+$("customT").addEventListener("keydown",e=>{ if(e.key==="Enter") document.querySelector('[data-act="custom"]').click(); });
+
+$("spMinus").onclick=()=>{ const mo=month(); mo.special=Math.max(0,(mo.special||0)-1); save(); renderTime(); };
+$("spPlus").onclick=()=>{ const mo=month(); mo.special=(mo.special||0)+1; save(); renderTime(); };
+function go(dm){ viewM+=dm; if(viewM<0){viewM=11;viewY--;} if(viewM>11){viewM=0;viewY++;} selected.clear(); renderTime(); renderSettings(); }
+$("prevM").onclick=()=>go(-1); $("nextM").onclick=()=>go(1);
+$("thisM").onclick=()=>{ viewY=now.getFullYear(); viewM=now.getMonth(); go(0); };
+
+/* ---------- render: pay ---------- */
+function renderPay(){
+  const p=calcPay(), s=state.salary;
+  const rows=[
+    ["g","월급여"],
+    ["기본급","A",p.A],["고정OT","B = A×20% (천원 올림)",p.B],["능력급","C = (A+B)/2",p.C],["전환급","D = (A+B)/6 (백원 올림)",p.D],
+    ["합계","E = A+B+C+D",p.E],["직무수당","F",p.F],["총합","G = E+F",p.G],
+    ["g","시급"],
+    ["통상시급","H = E/"+(num(s.hStd)||270),p.H],["실제시급 (직무수당 미포함)","I = E/"+(num(s.hReal)||176),p.I],["실제시급 (직무수당 포함)","J = G/"+(num(s.hReal)||176),p.J],
+    ["잔업비 (시간당)","K = H×1.5",p.K],["연차수당 (1일)","L = (A+B)×12/183",p.L],
+    ["g","상여·수당"],
+    ["PI ("+num(s.pi)+"%)","M = (A+B)×"+num(s.pi)+"%",p.M],["PS ("+num(s.ps)+"%)","N = (A+B)×"+num(s.ps)+"%",p.N],
+    ["타결금","O",p.O],["특별상여 (떡값, 휴가비)","P",p.P],["특별상여","Q",p.Q],
+    ["연차비 ("+num(s.leaveDays)+"일)","R = L/"+s.raise+"×"+num(s.leaveDays),p.R],
+    ["g","연봉"],
+    ["계약 연봉","S = E×12",p.S],["실제 연봉","T = G×12",p.T],
+  ];
+  const html=rows.map(r=> r[0]==="g" ? '<tr class="grp"><td colspan="2">'+r[1]+'</td></tr>'
+    : '<tr><td>'+esc(r[0])+'<span class="f">'+esc(r[1])+'</span></td><td>'+won(r[2])+'</td></tr>');
+  html.push('<tr class="total"><td>총 연봉<span class="f">U = T×'+esc(s.fReal)+' + R+Q+P+O+N + M×'+esc(s.fPI)+'</span></td><td>'+won(p.U)+'</td></tr>');
+  $("payOut").innerHTML=html.join("");
+}
+function fillPayInputs(){
+  document.querySelectorAll("#tab-pay input[data-k]").forEach(inp=>{
+    const k=inp.dataset.k, v=state.salary[k];
+    const money=["base","job","settle","bonus1","bonus2"].includes(k);
+    inp.value = money && v!=="" ? num(v).toLocaleString("ko-KR") : v;
+  });
+}
+document.querySelectorAll("#tab-pay input[data-k]").forEach(inp=>{
+  const money=["base","job","settle","bonus1","bonus2"].includes(inp.dataset.k);
+  inp.addEventListener("input",()=>{
+    let v=inp.value;
+    if(money){ const raw=v.replace(/[^\d]/g,""); state.salary[inp.dataset.k]=raw; inp.value= raw ? Number(raw).toLocaleString("ko-KR") : ""; }
+    else state.salary[inp.dataset.k]=v.replace(/[^\d.]/g,"");
+    save(); renderPay();
+  });
+});
+
+/* ---------- settings ---------- */
+function renderSettings(){
+  const list=[...state.custom].sort((a,b)=>a.d<b.d?-1:1);
+  $("hList").innerHTML = list.length ? list.map(h=>'<li><span>'+h.d+' · '+esc(h.name)+'</span><button class="text-btn" data-del="'+h.d+'">삭제</button></li>').join("")
+    : '<li style="color:var(--muted)">추가한 휴일이 없습니다.</li>';
+}
+$("hAdd").onclick=()=>{
+  const d=$("hDate").value, n=$("hName").value.trim()||"회사 휴일";
+  if(!d){ $("hDate").focus(); return; }
+  state.custom=state.custom.filter(h=>h.d!==d); state.custom.push({d,name:n});
+  $("hDate").value=""; $("hName").value=""; save(); renderSettings(); renderTime();
+};
+$("hList").addEventListener("click",e=>{ const b=e.target.closest("[data-del]"); if(!b) return; state.custom=state.custom.filter(h=>h.d!==b.dataset.del); save(); renderSettings(); renderTime(); });
+$("resetMonth").onclick=()=>{ if(!confirm(viewY+"년 "+(viewM+1)+"월 기록을 모두 지울까요?")) return; delete state.months[mKey()]; selected.clear(); save(); renderTime(); };
+
+/* ---------- tabs ---------- */
+document.querySelectorAll("nav.tabs button").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll("nav.tabs button").forEach(x=>x.setAttribute("aria-selected", String(x===b)));
+  ["time","pay","set"].forEach(t=>$("tab-"+t).hidden = t!==b.dataset.tab);
+  if(b.dataset.tab!=="time"){ selected.clear(); renderToolbar(); }
+  if(b.dataset.tab==="time") renderTime();
+}));
+
+/* ---------- persistence: 휴대폰 내부 저장 ---------- */
+function setSync(){
+  $("sync").textContent="· 이 브라우저에 저장";
+  $("syncNote").textContent="기록은 지금 쓰는 브라우저 안에만 저장되며 외부로 전송되지 않습니다. 다른 기기나 브라우저로 옮기거나 브라우저 기록을 지우기 전에는 백업해 두세요.";
+}
+function save(){
+  state.updated=Date.now();
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){}
+}
+setSync();
+
+/* ---------- 백업 ---------- */
+$("bkCopy").onclick=async()=>{
+  const code=JSON.stringify(state);
+  $("bkText").value=code;
+  try{ await navigator.clipboard.writeText(code); $("bkMsg").textContent="백업 코드를 복사했습니다. 메모나 메신저에 붙여넣어 보관하세요."; }
+  catch(e){ $("bkText").focus(); $("bkText").select(); $("bkMsg").textContent="아래 칸의 코드를 길게 눌러 전체 복사하세요."; }
+};
+function loadBackup(t){
+  let p; try{ p=JSON.parse(t); }catch(e){ $("bkMsg").textContent="백업 형식이 올바르지 않습니다. 코드 전체를 붙여넣었는지, 맞는 파일인지 확인하세요."; return; }
+  if(!p||typeof p!=="object"||!p.months){ $("bkMsg").textContent="근무시간 계산기의 백업이 아닙니다."; return; }
+  if(!confirm("지금 기록을 백업 내용으로 바꿀까요?")) return;
+  state=normalize(p); save(); fillPayInputs(); renderAll(); $("bkText").value=""; $("bkMsg").textContent="백업을 불러왔습니다.";
+}
+$("bkLoad").onclick=()=>{
+  const t=$("bkText").value.trim();
+  if(!t){ $("bkMsg").textContent="백업 코드를 아래 칸에 붙여넣은 뒤 다시 누르세요."; $("bkText").focus(); return; }
+  loadBackup(t);
+};
+$("bkSave").onclick=()=>{
+  const blob=new Blob([JSON.stringify(state,null,1)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+  a.download="근무시간_백업_"+todayKey+".json"; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  $("bkMsg").textContent="백업 파일을 저장했습니다. 다운로드 폴더를 확인하세요.";
+};
+$("bkOpen").onclick=()=>$("bkFile").click();
+$("bkFile").onchange=e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader(); r.onload=()=>{ loadBackup(String(r.result)); $("bkFile").value=""; }; r.readAsText(f);
+};
+
+function renderAll(){ renderTime(); renderPay(); renderSettings(); }
+fillPayInputs(); renderAll();
+})();
+</script>
+<script>
+if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+}
+</script>
+</body>
+</html>
