@@ -92,7 +92,7 @@ nav.tabs button[aria-selected="true"]{background:var(--steel);color:var(--paper)
 .quick{display:flex;gap:6px;flex-wrap:wrap}
 .quick button{border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:4px 11px;font-size:13px}
 .cal-scroll{}
-.cal{display:grid;grid-template-columns:minmax(0,.7fr) repeat(5,minmax(0,1fr)) minmax(0,.7fr);overflow:hidden}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));overflow:hidden}
 .cal .h{padding:8px 6px;font-size:12px;color:var(--muted);text-align:center;border-bottom:1px solid var(--line);background:var(--bg)}
 .cal .h.sum{color:var(--steel);font-weight:600}
 .day{position:relative;min-height:78px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);
@@ -109,9 +109,9 @@ nav.tabs button[aria-selected="true"]{background:var(--steel);color:var(--paper)
 .day.holiday{background:var(--red-soft)}
 .day.holiday .n{color:var(--red)}
 .day.t-edu{background:var(--edu-soft)}
-.day.t-edu .val{color:var(--edu);font-size:14px}
+.day.t-edu .val{color:var(--edu);font-size:14px;line-height:1.2}
 .day.t-leave{background:var(--leave-soft)}
-.day.t-leave .val{color:var(--leave);font-size:14px}
+.day.t-leave .val{color:var(--leave);font-size:14px;line-height:1.2}
 .day.past-empty .val{color:var(--line)}
 .day.sel{background:var(--signal)!important}
 .day.sel .n,.day.sel .val,.day.sel .hn{color:var(--signal-ink)}
@@ -177,8 +177,8 @@ a{color:var(--steel)}
   .cal .h{padding:6px 2px;font-size:11px}
   .day{padding:4px 3px;min-height:62px}
   .day .val{font-size:12px}
-  .day.t-leave .val,.day.t-edu .val{font-size:11px;letter-spacing:-0.3px}
-  .day .hn{font-size:9px;word-break:break-all;line-height:1.15}
+  .day.t-leave .val,.day.t-edu .val{font-size:12px}
+  .day .hn{font-size:10px;word-break:keep-all;line-height:1.2}
 }
 </style>
 </head>
@@ -210,9 +210,9 @@ a{color:var(--steel)}
       </div>
       <div class="side">
         <div class="kv"><span class="k">오늘까지 근무한 시간</span><span class="v" id="toToday"></span></div>
-        <div class="kv"><span class="k">오늘까지 의무시간 (근무일 기준)</span><span class="v" id="toTodayDuty"></span></div>
         <div class="kv hl"><span class="k">연장근무 (초과 − 17시간 42분)</span><span class="v" id="extra"></span></div>
-        <div class="kv" id="extraPayRow" hidden><span class="k">예상 연장수당</span><span class="v" id="extraPay"></span></div>
+        <div class="kv hl"><span class="k">이번 달 초과근무비 (예상)</span><span class="v" id="extraPay"></span></div>
+        <div class="kv" id="extraPayHint" hidden><span class="k" style="font-size:12px">연봉 탭에 기본급을 입력하면 계산됩니다</span></div>
       </div>
     </div>
 
@@ -432,10 +432,11 @@ function renderTime(){
     $("statusBadge").textContent="비정상 · 의무시간 미달"; $("statusBadge").className="badge ng";
   }
   $("toToday").textContent=fmtHM(r.toToday);
-  $("toTodayDuty").textContent=fmtHM(r.dutyToToday);
   $("extra").textContent=fmtHM(r.extra);
   const p=calcPay();
-  if(p.A>0){ $("extraPayRow").hidden=false; $("extraPay").textContent=won(r.extra/60*p.K); } else $("extraPayRow").hidden=true;
+  // 초과근무비 = 연장근무 시간 × 잔업비(1시간 기준, 연봉 탭)
+  if(p.A>0){ $("extraPay").textContent=won(r.extra/60*p.K); $("extraPayHint").hidden=true; }
+  else { $("extraPay").textContent="-"; $("extraPayHint").hidden=false; }
   $("mDays").textContent=r.days+"일";
   $("mSpecial").textContent=r.special+"시간";
   $("mDuty").textContent=fmtHM(r.duty);
@@ -463,7 +464,7 @@ function renderCal(){
       if(!c.inM){ html.push('<div class="day out" aria-hidden="true"></div>'); return; }
       const e=mo.days[c.key], hn=holName(c.key);
       if(di===0||di===6){
-        html.push('<div class="day we '+(di===6?'sat':'sun')+(hn?' holiday':'')+(c.key===todayKey?' today':'')+'"><span class="n">'+c.date+'</span>'+(hn?'<span class="hn">'+esc(hn)+'</span>':'')+'</div>');
+        html.push('<div class="day we '+(di===6?'sat':'sun')+(hn?' holiday':'')+(c.key===todayKey?' today':'')+'"><span class="n">'+c.date+'</span>'+(hn?'<span class="hn">'+hnHtml(hn)+'</span>':'')+'</div>');
         return;
       }
       const cls=["day"];
@@ -473,16 +474,17 @@ function renderCal(){
       let val="";
       if(e){
         if(e.t==="w"){ val=fmtCell(e.m); }
-        else if(e.t==="edu"||e.t==="trip"){ val="교육/출장"; cls.push("t-edu"); }
-        else if(e.t==="leave"){ val="연차/휴가"; cls.push("t-leave"); }
+        else if(e.t==="edu"||e.t==="trip"){ val="교육/<br>출장"; cls.push("t-edu"); }
+        else if(e.t==="leave"){ val="연차/<br>휴가"; cls.push("t-leave"); }
       }else if(hn){ val=""; }
       else if(c.key<todayKey){ val="—"; cls.push("past-empty"); }
-      html.push('<button type="button" class="'+cls.join(" ")+'" data-k="'+c.key+'" aria-pressed="'+selected.has(c.key)+'" aria-label="'+(viewM+1)+'월 '+c.date+'일 '+(hn||"")+' '+(val||"미입력")+'">'+
-        '<span class="n">'+c.date+'</span>'+(hn?'<span class="hn">'+esc(hn)+'</span>':'')+'<span class="val">'+val+'</span></button>');
+      html.push('<button type="button" class="'+cls.join(" ")+'" data-k="'+c.key+'" aria-pressed="'+selected.has(c.key)+'" aria-label="'+(viewM+1)+'월 '+c.date+'일 '+(hn||"")+' '+(val.replace('<br>','')||"미입력")+'">'+
+        '<span class="n">'+c.date+'</span>'+(hn?'<span class="hn">'+hnHtml(hn)+'</span>':'')+'<span class="val">'+val+'</span></button>');
     });
   });
   cal.innerHTML=html.join("");
 }
+function hnHtml(n){ return esc(n).replace(/대체공휴일/g,"대체<br>공휴일").replace(/부처님오신날/g,"부처님<br>오신날").replace(/·/g,"<br>").replace(/ /g,"<br>"); }
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
 function renderToolbar(){
   const tb=$("toolbar");
