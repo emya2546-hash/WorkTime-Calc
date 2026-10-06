@@ -153,7 +153,14 @@ details.adv summary{color:var(--steel);cursor:pointer;font-weight:500}
 .out-table .f{display:block;font-size:11px;color:var(--muted);font-weight:400}
 
 /* settings */
+.hol-box{border:1px solid var(--line);border-radius:10px;padding:0 12px;margin-top:4px}
+.hol-box summary{cursor:pointer;padding:10px 0;font-size:14px;font-weight:500;color:var(--steel)}
+.hol-box[open] summary{border-bottom:1px solid var(--line)}
 .hol-list{list-style:none;margin:0;padding:0}
+.hol-list li:last-child{border-bottom:0}
+.hol-list .acts{display:flex;gap:6px;flex-shrink:0}
+.hol-list .edit{display:flex;gap:6px;flex-wrap:wrap;width:100%}
+.hol-list .edit input{border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:var(--bg);min-width:0;flex:1 1 120px}
 .hol-list li{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
 .row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .row input{border:1px solid var(--line);border-radius:8px;padding:7px 10px;background:var(--bg)}
@@ -282,7 +289,11 @@ a{color:var(--steel)}
         <input id="hName" placeholder="이름 (예: 창립기념일)" aria-label="휴일 이름">
         <button class="text-btn" id="hAdd">휴일 추가</button>
       </div>
-      <ul class="hol-list" id="hList"></ul>
+      <p class="note" id="hMsg" aria-live="polite" style="margin:0 0 6px"></p>
+      <details class="hol-box" id="hBox">
+        <summary id="hSum">추가한 휴일 보기</summary>
+        <ul class="hol-list" id="hList"></ul>
+      </details>
     </div>
     <div class="card sec" style="margin-top:12px">
       <h3>데이터</h3>
@@ -569,18 +580,42 @@ document.querySelectorAll("#tab-pay input[data-k]").forEach(inp=>{
 });
 
 /* ---------- settings ---------- */
+let editingHol=null;
 function renderSettings(){
   const list=[...state.custom].sort((a,b)=>a.d<b.d?-1:1);
-  $("hList").innerHTML = list.length ? list.map(h=>'<li><span>'+h.d+' · '+esc(h.name)+'</span><button class="text-btn" data-del="'+h.d+'">삭제</button></li>').join("")
+  $("hSum").textContent="추가한 휴일 보기 ("+list.length+"개)";
+  $("hList").innerHTML = list.length ? list.map(h=> h.d===editingHol
+      ? '<li><div class="edit"><input type="date" id="eDate" value="'+h.d+'" aria-label="날짜"><input id="eName" value="'+esc(h.name)+'" aria-label="이름">'+
+        '<span class="acts"><button class="text-btn" data-save="'+h.d+'">저장</button><button class="text-btn" data-cancel="1">취소</button></span></div></li>'
+      : '<li><span>'+h.d+' · '+esc(h.name)+'</span><span class="acts"><button class="text-btn" data-edit="'+h.d+'">수정</button><button class="text-btn" data-del="'+h.d+'">삭제</button></span></li>'
+    ).join("")
     : '<li style="color:var(--muted)">추가한 휴일이 없습니다.</li>';
 }
 $("hAdd").onclick=()=>{
   const d=$("hDate").value, n=$("hName").value.trim()||"회사 휴일";
   if(!d){ $("hDate").focus(); return; }
+  const existed=state.custom.some(h=>h.d===d);
   state.custom=state.custom.filter(h=>h.d!==d); state.custom.push({d,name:n});
-  $("hDate").value=""; $("hName").value=""; save(); renderSettings(); renderTime();
+  $("hDate").value=""; $("hName").value="";
+  $("hMsg").textContent = d+" · "+n+(existed?" (으)로 변경했습니다.":" 휴일을 추가했습니다.");
+  save(); renderSettings(); renderTime();
 };
-$("hList").addEventListener("click",e=>{ const b=e.target.closest("[data-del]"); if(!b) return; state.custom=state.custom.filter(h=>h.d!==b.dataset.del); save(); renderSettings(); renderTime(); });
+$("hList").addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b) return;
+  if(b.dataset.edit){ editingHol=b.dataset.edit; renderSettings(); const n=$("eName"); if(n) n.focus(); return; }
+  if(b.dataset.cancel){ editingHol=null; renderSettings(); return; }
+  if(b.dataset.save){
+    const nd=$("eDate").value, nn=$("eName").value.trim()||"회사 휴일";
+    if(!nd){ $("eDate").focus(); return; }
+    state.custom=state.custom.filter(h=>h.d!==b.dataset.save && h.d!==nd); state.custom.push({d:nd,name:nn});
+    editingHol=null; $("hMsg").textContent="수정했습니다."; save(); renderSettings(); renderTime(); return;
+  }
+  if(b.dataset.del){
+    const h=state.custom.find(x=>x.d===b.dataset.del);
+    if(!confirm((h?h.d+" · "+h.name:"이 휴일")+"을(를) 삭제할까요?")) return;
+    state.custom=state.custom.filter(x=>x.d!==b.dataset.del); $("hMsg").textContent="삭제했습니다."; save(); renderSettings(); renderTime();
+  }
+});
 $("resetMonth").onclick=()=>{ if(!confirm(viewY+"년 "+(viewM+1)+"월 기록을 모두 지울까요?")) return; delete state.months[mKey()]; selected.clear(); save(); renderTime(); };
 
 /* ---------- tabs ---------- */
